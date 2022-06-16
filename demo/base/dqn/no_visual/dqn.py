@@ -7,6 +7,7 @@ import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import rl_utils
+from tensorboardX import SummaryWriter
 
 lr = 2e-3
 num_episodes = 500
@@ -120,6 +121,7 @@ if __name__ == "__main__":
     action_dim = env.action_space.n
     agent = DQN(state_dim, hidden_dim, action_dim, lr, gamma, epsilon,
                 target_update, device)
+    writer = SummaryWriter()
 
     return_list = []
     for i in range(10):
@@ -147,22 +149,24 @@ if __name__ == "__main__":
                         agent.update(transition_dict)
                 return_list.append(episode_return)
                 if (i_episode + 1) % 10 == 0:
-                    pbar.set_postfix({
-                        'episode':
-                            '%d' % (num_episodes / 10 * i + i_episode + 1),
-                        'return':
-                            '%.3f' % np.mean(return_list[-10:])
-                    })
+                    # pbar.set_postfix({
+                    #     'episode':
+                    #         '%d' % (num_episodes / 10 * i + i_episode + 1),
+                    #     'return':
+                    #         '%.3f' % np.mean(return_list[-10:])
+                    # })
+                    writer.add_scalar('ten episodes average rewards',np.mean(return_list[-10:]),(int)(num_episodes / 10 * i + i_episode + 1))
                 pbar.update(1)
 
     episodes_list = list(range(len(return_list)))
-    plt.plot(episodes_list, return_list)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('DQN on {}'.format(env_name))
-    plt.show()
+    # plt.plot(episodes_list, return_list)
+    # plt.xlabel('Episodes')
+    # plt.ylabel('Returns')
+    # plt.title('DQN on {}'.format(env_name))
+    # plt.show()
 
     mv_return = rl_utils.moving_average(return_list, 9)
+    writer.close()
     plt.plot(episodes_list, mv_return)
     plt.xlabel('Episodes')
     plt.ylabel('Returns')

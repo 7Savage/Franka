@@ -3,11 +3,17 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-import rl_utils
+from tqdm import tqdm
+
+
+from tensorboardX import SummaryWriter
+
+writer = SummaryWriter()
+
 
 actor_lr = 1e-3
 critic_lr = 1e-2
-num_episodes = 1000
+num_episodes = 10000
 hidden_dim = 128
 gamma = 0.98
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
@@ -76,7 +82,7 @@ class ActorCritic:
         # detach()方法切断td_delta的反向传播
         # 返回一个新的tensor，从当前计算图中分离下来的，但是仍指向原变量的存放位置,
         # 不同之处只是requires_grad为false，得到的这个tensor永远不需要计算其梯度，不具有grad
-        actor_loss = torch.mean(-log_probs * td_delta.detach())
+        actor_loss = torch.mean(-log_probs * td_target.detach())
         # 均方误差损失函数
         critic_loss = torch.mean(
             F.mse_loss(self.critic(states), td_target.detach()))
@@ -87,6 +93,34 @@ class ActorCritic:
         self.actor_optimizer.step()  # 更新策略网络的参数
         self.critic_optimizer.step()  # 更新价值网络的参数
 
+def train_on_policy_agent(env, agent, num_episodes):
+    return_list = []
+    for i in range(10):
+        with tqdm(total=int(num_episodes / 10), desc='Iteration %d' % i) as pbar:
+            for i_episode in range(int(num_episodes / 10)):
+                episode_return = 0
+                transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': [], 'dones': []}
+                state = env.reset()
+                done = False
+                while not done:
+                    action = agent.take_action(state)
+                    next_state, reward, done, _ = env.step(action)
+                    transition_dict['states'].append(state)
+                    transition_dict['actions'].append(action)
+                    transition_dict['next_states'].append(next_state)
+                    transition_dict['rewards'].append(reward)
+                    transition_dict['dones'].append(done)
+                    state = next_state
+                    episode_return += reward
+                return_list.append(episode_return)
+                agent.update(transition_dict)
+                if (i_episode + 1) % 10 == 0:
+                    # pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
+                    #                   'return': '%.3f' % np.mean(return_list[-10:])})
+                    writer.add_scalar('AC-ten episodes average rewards',np.mean(return_list[-10:]),(int)(num_episodes / 10 * i + i_episode + 1))
+                pbar.update(1)
+    writer.close()
+    return return_list
 
 if __name__ == "__main__":
     env_name = 'CartPole-v1'
@@ -98,18 +132,18 @@ if __name__ == "__main__":
     agent = ActorCritic(state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
                         gamma, device)
 
-    return_list = rl_utils.train_on_policy_agent(env, agent, num_episodes)
+    train_on_policy_agent(env, agent, num_episodes)
 
-    episodes_list = list(range(len(return_list)))
-    plt.plot(episodes_list, return_list)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('Actor-Critic on {}'.format(env_name))
-    plt.show()
+    #episodes_list = list(range(len(return_list)))
+    # plt.plot(episodes_list, return_list)
+    # plt.xlabel('Episodes')
+    # plt.ylabel('Returns')
+    # plt.title('Actor-Critic on {}'.format(env_name))
+    # plt.show()
 
-    mv_return = rl_utils.moving_average(return_list, 9)
-    plt.plot(episodes_list, mv_return)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('Actor-Critic on {}'.format(env_name))
-    plt.show()
+    # mv_return = rl_utils.moving_average(return_list, 9)
+    # plt.plot(episodes_list, mv_return)
+    # plt.xlabel('Episodes')
+    # plt.ylabel('Returns')
+    # plt.title('Actor-Critic on {}'.format(env_name))
+    # plt.show()
