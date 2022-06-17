@@ -102,41 +102,6 @@ class ActorCritic:
             writer.add_scalar("A2C-CriticLearningRate", self.actor_optimizer.state_dict()['param_groups'][0]['lr'], episode)
 
 
-def train_on_policy_agent(env, agent, num_episodes):
-    return_list = []
-    for i in range(10):
-        with tqdm(total=int(num_episodes / 10), desc='Iteration %d' % i) as pbar:
-            for i_episode in range(int(num_episodes / 10)):
-                episode_return = 0
-                transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': [], 'dones': []}
-                state = env.reset()
-                done = False
-                while not done:
-                    action = agent.take_action(state)
-                    next_state, reward, done, _ = env.step(action)
-                    transition_dict['states'].append(state)
-                    transition_dict['actions'].append(action)
-                    transition_dict['next_states'].append(next_state)
-                    transition_dict['rewards'].append(reward)
-                    transition_dict['dones'].append(done)
-                    state = next_state
-                    episode_return += reward
-                return_list.append(episode_return)
-                agent.update(transition_dict, i_episode, i)
-                if (i_episode + 1) % 10 == 0:
-                    writer.add_scalar('A2C-ten episodes average rewards', np.mean(return_list[-10:]),
-                                      (int)(num_episodes / 10 * i + i_episode + 1))
-                torch.save({
-                        'actor_net_state_dict': agent.actor.state_dict(),
-                        'critic_net_state_dict': agent.critic.state_dict(),
-                        'optimizer_actor_net_state_dict': agent.actor_optimizer.state_dict(),
-                        'optimizer_critic_net_state_dict': agent.critic_optimizer.state_dict()
-                    }, PATH)
-                pbar.update(1)
-    writer.close()
-    return return_list
-
-
 if __name__ == "__main__":
     env_name = 'CartPole-v1'
     env = gym.make(env_name)
@@ -147,7 +112,26 @@ if __name__ == "__main__":
     agent = ActorCritic(state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
                         gamma, device)
 
-    train_on_policy_agent(env, agent, num_episodes)
+    #train_on_policy_agent(env, agent, num_episodes)
+    checkpoint = torch.load(PATH)
+    agent.actor.load_state_dict(checkpoint['actor_net_state_dict'])
+    agent.critic.load_state_dict(checkpoint['critic_net_state_dict'])
+
+
+    # evaluate the model
+    # for i_episode in range(num_episodes):
+    #     env.reset()
+    #     state = env.step()
+    #     for t in count():
+    #         # Select and perform an action
+    #         action = agent.actor.(stacked_states_t).max(1)[1].view(1, 1)
+    #         _, reward, done, _ = env.step(action.item())
+    #         # Observe new state
+    #         next_state = get_screen()
+    #         stacked_states.append(next_state)
+    #         if done:
+    #             break
+    #     print("Episode: {0:d}, reward: {1}".format(i_episode + 1, reward), end="\n")
 
     # episodes_list = list(range(len(return_list)))
     # plt.plot(episodes_list, return_list)
