@@ -12,7 +12,7 @@ from tqdm import tqdm
     在使用截断式目标函数的基础上，增加了一个价值函数的惩罚项和一个熵的惩罚项
     使用值的梯度更新策略网络
 """
-writer = SummaryWriter()
+writer = SummaryWriter(log_dir="runs/result_2", flush_secs=120)
 
 class PolicyNetContinuous(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
@@ -64,7 +64,7 @@ def train_on_policy_agent(env, agent, num_episodes):
                 # mv_return = rl_utils.moving_average(return_list, 21)
                 agent.update(transition_dict)
                 if (i_episode+1) % 10 == 0:
-                    writer.add_scalar('ppo_im', np.mean(return_list[-10:]), (int)(num_episodes / 10 * i + i_episode + 1))
+                    writer.add_scalar('ppo', np.mean(return_list[-10:]), (int)(num_episodes / 10 * i + i_episode + 1))
                     # writer.add_scalar('ac', np.mean(mv_return[-10:]), (int)(num_episodes / 10 * i + i_episode + 1))
                     pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
                                       'return': '%.3f' % np.mean(return_list[-10:])})

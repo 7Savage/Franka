@@ -11,7 +11,7 @@ from tqdm import tqdm
     在使用截断式目标函数的基础上，增加了一个价值函数的惩罚项和一个熵的惩罚项
     增加tensorboard
 """
-writer = SummaryWriter("./logs")
+writer = SummaryWriter(log_dir="runs/result_1", flush_secs=120)
 
 
 class PolicyNetContinuous(torch.nn.Module):

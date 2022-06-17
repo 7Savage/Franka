@@ -19,17 +19,6 @@ from pybullet_envs.bullet.kuka_diverse_object_gym_env import KukaDiverseObjectEn
 from gym import spaces
 import pybullet as p
 
-env = KukaDiverseObjectEnv(renders=True, isDiscrete=False, removeHeightHack=False, maxSteps=20)
-env.cid = p.connect(p.GUI)
-# if gpu is to be used
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-action_space = spaces.Box(low=-1, high=1, shape=(5, 1))
-writer = SummaryWriter()
-best_mean_reward = None
-scores_window = deque(maxlen=100)  # last 100 scores
-save_scores = []
-start_time = timeit.default_timer()
-
 discount = 0.993
 epsilon = 0.07
 beta = .01
@@ -133,6 +122,7 @@ class ActorCritic(nn.Module):
             if self.init_type == 'xavier-uniform':
                 nn.init.xavier_uniform_(n.weight.data)
             elif self.init_type == 'xavier-normal':
+
                 nn.init.xavier_normal_(n.weight.data)
             elif self.init_type == 'kaiming-uniform':
                 nn.init.kaiming_uniform_(n.weight.data)
@@ -141,8 +131,10 @@ class ActorCritic(nn.Module):
             elif self.init_type == 'orthogonal':
                 nn.init.orthogonal_(n.weight.data)
             elif self.init_type == 'uniform':
+                # 均匀分布
                 nn.init.uniform_(n.weight.data)
             elif self.init_type == 'normal':
+                # 正态分布
                 nn.init.normal_(n.weight.data)
             else:
                 raise KeyError('initialization type is not found in the set of existing types')
@@ -180,7 +172,7 @@ resize = T.Compose([T.ToPILImage(),
 
 def get_screen():
     # Returned screen requested by gym is 400x600x3, but is sometimes larger
-    # such as 800x1200x3. Transpose it into torch order (CHW).
+    # such as 800x1200x3. Transpose it into torch order (CHW).HWC-->CHW
     # env.render(mode='human')
     screen = env._get_observation().transpose((2, 0, 1))
     # Convert to float, rescale, convert to torch tensor
@@ -315,6 +307,17 @@ def plot_screen(screen):
 
 
 if __name__ == "__main__":
+    env = KukaDiverseObjectEnv(renders=True, isDiscrete=False, removeHeightHack=False, maxSteps=20)
+    env.cid = p.connect(p.DIRECT)
+    # if gpu is to be used
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    action_space = spaces.Box(low=-1, high=1, shape=(5, 1))
+    writer = SummaryWriter()
+    best_mean_reward = None
+    scores_window = deque(maxlen=100)  # last 100 scores
+    save_scores = []
+    start_time = timeit.default_timer()
+
     env.reset()
 
     # number of agents
