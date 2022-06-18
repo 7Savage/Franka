@@ -62,45 +62,6 @@ class ActorCritic:
         action = action_dist.sample()
         return action.item()
 
-    def update(self, transition_dict, i_episode, i):
-        states = torch.tensor(transition_dict['states'],
-                              dtype=torch.float).to(self.device)
-        actions = torch.tensor(transition_dict['actions']).view(-1, 1).to(
-            self.device)
-        rewards = torch.tensor(transition_dict['rewards'],
-                               dtype=torch.float).view(-1, 1).to(self.device)
-        next_states = torch.tensor(transition_dict['next_states'],
-                                   dtype=torch.float).to(self.device)
-        dones = torch.tensor(transition_dict['dones'],
-                             dtype=torch.float).view(-1, 1).to(self.device)
-
-        # 时序差分目标
-        td_target = rewards + self.gamma * self.critic(next_states) * (1 - dones)
-        td_delta = td_target - self.critic(states)  # 时序差分误差
-        log_probs = torch.log(self.actor(states).gather(1, actions))
-        # detach()方法切断td_delta的反向传播
-        # 返回一个新的tensor，从当前计算图中分离下来的，但是仍指向原变量的存放位置,
-        # 不同之处只是requires_grad为false，得到的这个tensor永远不需要计算其梯度，不具有grad
-        actor_loss = torch.mean(-log_probs * td_delta.detach())
-        # 均方误差损失函数
-        critic_loss = torch.mean(
-            F.mse_loss(self.critic(states), td_target.detach()))
-        self.actor_optimizer.zero_grad()
-        self.critic_optimizer.zero_grad()
-        actor_loss.backward()  # 计算策略网络的梯度
-        critic_loss.backward()  # 计算价值网络的梯度
-        self.actor_optimizer.step()  # 更新策略网络的参数
-        self.critic_optimizer.step()  # 更新价值网络的参数
-        writer.add_graph(self.actor,states)
-        #writer.add_graph(self.critic,states)
-        if (i_episode + 1) % 10 == 0:
-            episode = (int)(num_episodes / 10 * i + i_episode + 1)
-            writer.add_scalar('A2C-ActorLoss', actor_loss,
-                              episode)
-            writer.add_scalar("A2C-CriticLoss", critic_loss, episode)
-            writer.add_scalar("A2C-ActorLearningRate", self.actor_optimizer.state_dict()['param_groups'][0]['lr'], episode)
-            writer.add_scalar("A2C-CriticLearningRate", self.actor_optimizer.state_dict()['param_groups'][0]['lr'], episode)
-
 
 if __name__ == "__main__":
     env_name = 'CartPole-v1'
@@ -117,6 +78,26 @@ if __name__ == "__main__":
     agent.actor.load_state_dict(checkpoint['actor_net_state_dict'])
     agent.critic.load_state_dict(checkpoint['critic_net_state_dict'])
 
+    return_list = []
+    for i in range(10):
+        with tqdm(total=int(num_episodes / 10), desc='Iteration %d' % i) as pbar:
+            for i_episode in range(int(num_episodes / 10)):
+                episode_return = 0
+                transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': [], 'dones': []}
+                state = env.reset()
+                done = False
+                while not done:
+                    action = agent.take_action(state)
+                    next_state, reward, done, _ = env.step(action)
+                    state = next_state
+                    episode_return += reward
+                return_list.append(episode_return)
+                if (i_episode + 1) % 10 == 0:
+                    pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
+                                      'return': '%.3f' % np.mean(return_list[-10:])})
+                    writer.add_scalar('A2C-ten episodes average rewards', np.mean(return_list[-10:]),
+                                      (int)(num_episodes / 10 * i + i_episode + 1))
+                pbar.update(1)
 
     # evaluate the model
     # for i_episode in range(num_episodes):
