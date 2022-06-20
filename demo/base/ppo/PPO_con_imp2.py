@@ -11,7 +11,7 @@ from tqdm import tqdm
     在使用截断式目标函数的基础上，增加了一个价值函数的惩罚项和一个熵的惩罚项
     增加tensorboard
 """
-writer = SummaryWriter(log_dir="runs/result_1", flush_secs=120)
+writer = SummaryWriter()
 
 
 class PolicyNetContinuous(torch.nn.Module):
@@ -128,16 +128,16 @@ class PPOContinuous:
             ratio = torch.exp(log_probs - old_log_probs) ##实现以e为底的指数 log_probs/old_probs 的比率
             surr1 = ratio * advantage  #目标函数中的第一项PPO_con.py
             surr2 = torch.clamp(ratio, 1 - self.eps, 1 + self.eps) * advantage  ##目标函数中的第二项
-            # actor_loss = torch.mean(-torch.min(surr1, surr2))  ##目标函数
+            actor_loss = torch.mean(-torch.min(surr1, surr2))  ##目标函数
 
-            entropy = torch.sum(action_dists.entropy(), dim=-1)
-            actor_loss_CLIP = torch.mean(torch.min(surr1, surr2))  ##目标函数
-
-            S = entropy.mean()   #熵惩罚项
-            # squared-error value function loss 平方误差值函数损失
-            actor_VF = 0.5 * (self.critic(states) - td_target.detach()).pow(2).mean()  #损失函数
-            # clipped surrogate # 裁剪, 限制值范围
-            actor_loss = -(actor_loss_CLIP - actor_VF + beta * S)  #目标函数
+            # entropy = torch.sum(action_dists.entropy(), dim=-1)
+            # actor_loss_CLIP = torch.mean(torch.min(surr1, surr2))  ##目标函数
+            #
+            # S = entropy.mean()   #熵惩罚项
+            # # squared-error value function loss 平方误差值函数损失
+            # actor_VF = 0.5 * (self.critic(states) - td_target.detach()).pow(2).mean()  #损失函数
+            # # clipped surrogate # 裁剪, 限制值范围
+            # actor_loss = -(actor_loss_CLIP - actor_VF + beta * S)  #目标函数
 
             critic_loss = torch.mean(
                 F.mse_loss(self.critic(states), td_target.detach()))
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     beta = .01
     actor_lr = 1e-4
     critic_lr = 5e-3
-    num_episodes = 3000
+    num_episodes = 10000
     hidden_dim = 128
     gamma = 0.9
     lmbda = 0.9
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
         "cpu")
 
-    env_name = 'Pendulum-v1'
+    env_name = 'MountainCarContinuous-v0'
     env = gym.make(env_name)
     env.seed(0)
     torch.manual_seed(0)  # 设置 (CPU) 生成随机数的种子，并返回一个torch.Generator对象。设置种子的用意是一旦固定种子，后面依次生成的随机数其实都是固定的。

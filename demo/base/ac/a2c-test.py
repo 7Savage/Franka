@@ -89,6 +89,7 @@ if __name__ == "__main__":
                 while not done:
                     action = agent.take_action(state)
                     next_state, reward, done, _ = env.step(action)
+                    env.render()
                     state = next_state
                     episode_return += reward
                 return_list.append(episode_return)

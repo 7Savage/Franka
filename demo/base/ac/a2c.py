@@ -124,6 +124,8 @@ def train_on_policy_agent(env, agent, num_episodes):
                 return_list.append(episode_return)
                 agent.update(transition_dict, i_episode, i)
                 if (i_episode + 1) % 10 == 0:
+                    pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
+                                      'return': '%.3f' % np.mean(return_list[-10:])})
                     writer.add_scalar('A2C-ten episodes average rewards', np.mean(return_list[-10:]),
                                       (int)(num_episodes / 10 * i + i_episode + 1))
                 torch.save({

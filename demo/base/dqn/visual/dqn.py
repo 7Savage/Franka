@@ -310,9 +310,9 @@ if __name__ == '__main__':
         env.reset()
 
         last_screen = get_screen()
-        plot_screen(last_screen)
+        #plot_screen(last_screen)
         current_screen = get_screen()
-        plot_screen(current_screen)
+        #plot_screen(current_screen)
         state = current_screen - last_screen
 
         for t in count():

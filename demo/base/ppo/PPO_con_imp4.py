@@ -12,7 +12,7 @@ from tqdm import tqdm
     在使用截断式目标函数的基础上，增加了一个价值函数的惩罚项和一个熵的惩罚项
     使用值的梯度更新策略网络
 """
-writer = SummaryWriter(log_dir="runs/result_2", flush_secs=120)
+writer = SummaryWriter()
 
 class PolicyNetContinuous(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     beta = .01
     actor_lr = 1e-4
     critic_lr = 5e-3
-    num_episodes = 3000
+    num_episodes = 10000
     hidden_dim = 128
     gamma = 0.9
     lmbda = 0.9
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
         "cpu")
 
-    env_name = 'Pendulum-v1'
+    env_name = 'MountainCarContinuous-v0'
     env = gym.make(env_name)
     env.seed(0)
     torch.manual_seed(0)  # 设置 (CPU) 生成随机数的种子，并返回一个torch.Generator对象。设置种子的用意是一旦固定种子，后面依次生成的随机数其实都是固定的。
