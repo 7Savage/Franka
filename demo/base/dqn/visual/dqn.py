@@ -13,6 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
+from tqdm import tqdm
 
 BATCH_SIZE = 128  # 从transition提取样本的批次大小
 GAMMA = 0.999  # 衰减系数
@@ -21,6 +22,10 @@ EPS_END = 0.05  # 贪婪参数最小值
 EPS_DECAY = 200  # 贪婪参数变化次数
 TARGET_UPDATE = 10  # target net更新次数
 steps_done = 0  # 记录全局步骤
+
+from tensorboardX import SummaryWriter
+
+writer = SummaryWriter()
 
 
 class ReplayMemory(object):
@@ -106,6 +111,7 @@ def get_cart_location(screen_width):
     scale = screen_width / world_width
     # 世界中点在屏幕中间，所以偏移屏幕一半
     return int(env.state[0] * scale + screen_width / 2.0)  # MIDDLE OF CART
+
 
 
 # gym要求的返回屏幕是400x600x3，但有时更大，如800x1200x3。 将其转换为torch order（CHW）。
@@ -268,7 +274,6 @@ if __name__ == '__main__':
     # 显示模式转换为交互（interactive）模式
     # matplotlib的显示模式默认为阻塞（block）模式（即：在plt.show()之后，程序会暂停到那儿，并不会继续执行下去
     plt.ion()
-
     plt.figure()
 
     # if gpu is to be used
@@ -304,7 +309,7 @@ if __name__ == '__main__':
     memory = ReplayMemory(10000)
 
     # 开始训练
-    num_episodes = 10  # 迭代次数
+    num_episodes = 1000  # 迭代次数
     for i_episode in range(num_episodes):
         # 初始化环境和状态
         env.reset()

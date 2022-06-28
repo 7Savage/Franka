@@ -206,17 +206,4 @@ if __name__ == "__main__":
                            lmbda, kl_constraint, alpha, critic_lr, gamma, device)
     return_list = rl_utils.train_on_policy_agent(env, agent, num_episodes)
 
-    episodes_list = list(range(len(return_list)))
-    plt.plot(episodes_list, return_list)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('TRPO on {}'.format(env_name))
-    plt.show()
-
-    mv_return = rl_utils.moving_average(return_list, 9)
-    plt.plot(episodes_list, mv_return)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('TRPO on {}'.format(env_name))
-    plt.show()
 

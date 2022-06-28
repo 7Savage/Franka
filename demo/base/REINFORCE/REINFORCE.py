@@ -3,9 +3,8 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
+from tensorboardX import SummaryWriter
 from tqdm import tqdm
-import rl_utils
-
 learning_rate = 1e-3
 num_episodes = 1000
 hidden_dim = 128
@@ -13,7 +12,7 @@ gamma = 0.98
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
 
-
+writer = SummaryWriter("../log/REINFORCE")
 class PolicyNet(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
         super(PolicyNet, self).__init__()
@@ -76,13 +75,7 @@ if __name__ == "__main__":
         with tqdm(total=int(num_episodes / 10), desc='Iteration %d' % i) as pbar:
             for i_episode in range(int(num_episodes / 10)):
                 episode_return = 0
-                transition_dict = {
-                    'states': [],
-                    'actions': [],
-                    'next_states': [],
-                    'rewards': [],
-                    'dones': []
-                }
+                transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': [], 'dones': []}
                 state = env.reset()
                 done = False
                 while not done:
@@ -98,24 +91,9 @@ if __name__ == "__main__":
                 return_list.append(episode_return)
                 agent.update(transition_dict)
                 if (i_episode + 1) % 10 == 0:
-                    pbar.set_postfix({
-                        'episode':
-                            '%d' % (num_episodes / 10 * i + i_episode + 1),
-                        'return':
-                            '%.3f' % np.mean(return_list[-10:])
-                    })
+                    pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
+                                      'return': '%.3f' % np.mean(return_list[-10:])})
+                    writer.add_scalar('ten episodes average rewards', np.mean(return_list[-10:]),
+                                      (int)(num_episodes / 10 * i + i_episode + 1))
                 pbar.update(1)
 
-    episodes_list = list(range(len(return_list)))
-    plt.plot(episodes_list, return_list)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('REINFORCE on {}'.format(env_name))
-    plt.show()
-
-    mv_return = rl_utils.moving_average(return_list, 9)
-    plt.plot(episodes_list, mv_return)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('REINFORCE on {}'.format(env_name))
-    plt.show()

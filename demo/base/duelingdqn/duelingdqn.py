@@ -4,11 +4,13 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+from tensorboardX import SummaryWriter
+
 import rl_utils
 from tqdm import tqdm
 
 lr = 1e-2
-num_episodes = 200
+num_episodes = 2000
 hidden_dim = 128
 gamma = 0.98
 epsilon = 0.01
@@ -19,6 +21,7 @@ batch_size = 64
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
 
+writer = SummaryWriter("../log2/dueling_dqn")
 
 class Qnet(torch.nn.Module):
     ''' 只有一层隐藏层的Q网络 '''
@@ -83,6 +86,8 @@ def train_DQN(agent, env, num_episodes, replay_buffer, minimal_size,
                         'return':
                             '%.3f' % np.mean(return_list[-10:])
                     })
+                    writer.add_scalar('ten episodes average rewards', np.mean(return_list[-10:]),
+                                      (int)(num_episodes / 10 * i + i_episode + 1))
                 pbar.update(1)
     return return_list, max_q_value_list
 
@@ -180,7 +185,7 @@ class DQN:
 
 
 if __name__ == "__main__":
-    env_name = 'Pendulum-v0'
+    env_name = 'Pendulum-v1'
     env = gym.make(env_name)
     state_dim = env.observation_space.shape[0]
     action_dim = 11  # 将连续动作分成11个离散动作
@@ -191,23 +196,6 @@ if __name__ == "__main__":
     replay_buffer = rl_utils.ReplayBuffer(buffer_size)
     agent = DQN(state_dim, hidden_dim, action_dim, lr, gamma, epsilon,
                 target_update, device, 'DuelingDQN')
-    return_list, max_q_value_list = train_DQN(agent, env, num_episodes,
-                                              replay_buffer, minimal_size,
-                                              batch_size)
-
-    episodes_list = list(range(len(return_list)))
-    mv_return = rl_utils.moving_average(return_list, 5)
-    plt.plot(episodes_list, mv_return)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('Dueling DQN on {}'.format(env_name))
-    plt.show()
-
-    frames_list = list(range(len(max_q_value_list)))
-    plt.plot(frames_list, max_q_value_list)
-    plt.axhline(0, c='orange', ls='--')
-    plt.axhline(10, c='red', ls='--')
-    plt.xlabel('Frames')
-    plt.ylabel('Q value')
-    plt.title('Dueling DQN on {}'.format(env_name))
-    plt.show()
+    train_DQN(agent, env, num_episodes,
+              replay_buffer, minimal_size,
+              batch_size)

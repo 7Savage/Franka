@@ -7,11 +7,11 @@ from tqdm import tqdm
 
 from tensorboardX import SummaryWriter
 
-writer = SummaryWriter()
+writer = SummaryWriter("../log/a2c")
 
 actor_lr = 1e-3
 critic_lr = 1e-2
-num_episodes = 2000
+num_episodes = 1000
 hidden_dim = 128
 gamma = 0.98
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
@@ -98,8 +98,6 @@ class ActorCritic:
             writer.add_scalar('A2C-ActorLoss', actor_loss,
                               episode)
             writer.add_scalar("A2C-CriticLoss", critic_loss, episode)
-            writer.add_scalar("A2C-ActorLearningRate", self.actor_optimizer.state_dict()['param_groups'][0]['lr'], episode)
-            writer.add_scalar("A2C-CriticLearningRate", self.actor_optimizer.state_dict()['param_groups'][0]['lr'], episode)
 
 
 def train_on_policy_agent(env, agent, num_episodes):
@@ -126,13 +124,11 @@ def train_on_policy_agent(env, agent, num_episodes):
                 if (i_episode + 1) % 10 == 0:
                     pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
                                       'return': '%.3f' % np.mean(return_list[-10:])})
-                    writer.add_scalar('A2C-ten episodes average rewards', np.mean(return_list[-10:]),
+                    writer.add_scalar('ten episodes average rewards', np.mean(return_list[-10:]),
                                       (int)(num_episodes / 10 * i + i_episode + 1))
                 torch.save({
                         'actor_net_state_dict': agent.actor.state_dict(),
                         'critic_net_state_dict': agent.critic.state_dict(),
-                        'optimizer_actor_net_state_dict': agent.actor_optimizer.state_dict(),
-                        'optimizer_critic_net_state_dict': agent.critic_optimizer.state_dict()
                     }, PATH)
                 pbar.update(1)
     writer.close()
@@ -150,17 +146,3 @@ if __name__ == "__main__":
                         gamma, device)
 
     train_on_policy_agent(env, agent, num_episodes)
-
-    # episodes_list = list(range(len(return_list)))
-    # plt.plot(episodes_list, return_list)
-    # plt.xlabel('Episodes')
-    # plt.ylabel('Returns')
-    # plt.title('Actor-Critic on {}'.format(env_name))
-    # plt.show()
-
-    # mv_return = rl_utils.moving_average(return_list, 9)
-    # plt.plot(episodes_list, mv_return)
-    # plt.xlabel('Episodes')
-    # plt.ylabel('Returns')
-    # plt.title('Advantage-Actor-Critic on {}'.format(env_name))
-    # plt.show()

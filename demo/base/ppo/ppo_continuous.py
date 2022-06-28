@@ -3,11 +3,14 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
+from tensorboardX import SummaryWriter
+from tqdm import tqdm
+
 import rl_utils
 
 actor_lr = 1e-4
 critic_lr = 5e-3
-num_episodes = 2000
+num_episodes = 5000
 hidden_dim = 128
 gamma = 0.9
 lmbda = 0.9
@@ -16,17 +19,7 @@ eps = 0.2
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
 
-
-class PolicyNet(torch.nn.Module):
-    def __init__(self, state_dim, hidden_dim, action_dim):
-        super(PolicyNet, self).__init__()
-        self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, action_dim)
-
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        return F.softmax(self.fc2(x), dim=1)
-
+writer = SummaryWriter("../log2/ppo_base")
 
 class ValueNet(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim):
@@ -78,7 +71,7 @@ class PPOContinuous:
         action = action_dist.sample()
         return [action.item()]
 
-    def update(self, transition_dict):
+    def update(self, transition_dict,i_episode):
         states = torch.tensor(transition_dict['states'],
                               dtype=torch.float).to(self.device)
         actions = torch.tensor(transition_dict['actions'],
@@ -117,9 +110,17 @@ class PPOContinuous:
             self.actor_optimizer.step()
             self.critic_optimizer.step()
 
+        if (i_episode + 1) % 10 == 0:
+            episode = (int)(num_episodes / 10 * i + i_episode + 1)
+            writer.add_scalar('ActorLearningRate',self.actor_optimizer.state_dict()['param_groups'][0]['lr'],
+                              episode)
+            writer.add_scalar("CriticLearningRate", self.critic_optimizer.state_dict()['param_groups'][0]['lr'], episode)
+
+
+
 
 if __name__ == "__main__":
-    env_name = 'Pendulum-v1'
+    env_name = 'MountainCarContinuous-v0'
     env = gym.make(env_name)
     env.seed(0)
     torch.manual_seed(0)
@@ -128,4 +129,30 @@ if __name__ == "__main__":
     agent = PPOContinuous(state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
                           lmbda, epochs, eps, gamma, device)
 
-    return_list = rl_utils.train_on_policy_agent(env, agent, num_episodes)
+
+    return_list = []
+    for i in range(10):
+        with tqdm(total=int(num_episodes / 10), desc='Iteration %d' % i) as pbar:
+            for i_episode in range(int(num_episodes / 10)):
+                episode_return = 0
+                transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': [], 'dones': []}
+                state = env.reset()
+                done = False
+                while not done:
+                    action = agent.take_action(state)
+                    next_state, reward, done, _ = env.step(action)
+                    transition_dict['states'].append(state)
+                    transition_dict['actions'].append(action)
+                    transition_dict['next_states'].append(next_state)
+                    transition_dict['rewards'].append(reward)
+                    transition_dict['dones'].append(done)
+                    state = next_state
+                    episode_return += reward
+                return_list.append(episode_return)
+                agent.update(transition_dict,i_episode)
+                if (i_episode + 1) % 10 == 0:
+                    pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
+                                      'return': '%.3f' % np.mean(return_list[-10:])})
+                    writer.add_scalar('ten episodes average rewards', np.mean(return_list[-10:]),
+                                      (int)(num_episodes / 10 * i + i_episode + 1))
+                pbar.update(1)

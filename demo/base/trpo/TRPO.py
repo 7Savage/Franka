@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import rl_utils
 import copy
 
-num_episodes = 500
+num_episodes = 1000
 hidden_dim = 128
 gamma = 0.98
 lmbda = 0.95
@@ -193,18 +193,4 @@ if __name__ == "__main__":
     torch.manual_seed(0)
     agent = TRPO(hidden_dim, env.observation_space, env.action_space, lmbda,
                  kl_constraint, alpha, critic_lr, gamma, device)
-    return_list = rl_utils.train_on_policy_agent(env, agent, num_episodes)
-
-    episodes_list = list(range(len(return_list)))
-    plt.plot(episodes_list, return_list)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('TRPO on {}'.format(env_name))
-    plt.show()
-
-    mv_return = rl_utils.moving_average(return_list, 9)
-    plt.plot(episodes_list, mv_return)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('TRPO on {}'.format(env_name))
-    plt.show()
+    rl_utils.train_on_policy_agent(env, agent, num_episodes)

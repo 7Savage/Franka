@@ -17,7 +17,7 @@ writer = SummaryWriter()
 
 actor_lr = 1e-3
 critic_lr = 1e-2
-num_episodes = 2000
+num_episodes = 500
 hidden_dim = 128
 gamma = 0.98
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
@@ -51,45 +51,37 @@ class CNN(torch.nn.Module):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
-        # x.view(x.size(0), -1)这句话是说将第三次卷积的输出拉伸为一行
-        # view函数相当于resize函数，改变张量维度，主义保持元素个数总数不变
-        # 而-1指在不告诉函数有多少列的情况下，根据原tensor数据和batchsize自动分配列数。
         return self.head(x.view(x.size(0), -1))
 
 
 class PolicyNet(torch.nn.Module):
-    def __init__(self, state_dim, hidden_dim, action_dim):
+    def __init__(self, h, w, outputs):
         super(PolicyNet, self).__init__()
-        self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, action_dim)
+        self.cnn = CNN(h, w, outputs)
+        self.fc1 = torch.nn.Linear(outputs, action_dim)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        return F.softmax(self.fc2(x), dim=1)
+        x = self.cnn(x)
+        return F.softmax(self.fc1(x), dim=1)
 
 
 class ValueNet(torch.nn.Module):
-    def __init__(self, state_dim, hidden_dim):
+    def __init__(self, h, w, outputs):
         super(ValueNet, self).__init__()
-        self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
-        self.fc2 = torch.nn.Linear(hidden_dim, 1)
+        self.cnn = CNN(h, w, outputs)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        return self.fc2(x)
+        return self.cnn(x)
 
 
 class ActorCritic:
-    def __init__(self, state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
-                 gamma, device, screen_height, screen_width, outputs):
-        # 卷积神经网络
-        self.cnn = CNN(screen_height, screen_width, outputs).to(device)
-        # 策略网络
-        self.actor = PolicyNet(state_dim, hidden_dim, action_dim).to(device)
-        # 价值网络
-        self.critic = ValueNet(state_dim, hidden_dim).to(device)
+    def __init__(self, screen_height, screen_width, action_dim, actor_lr, critic_lr,
+                 gamma, device):
+
+        self.actor = PolicyNet(screen_height, screen_width,
+                               action_dim).to(device)
+        self.critic = ValueNet(screen_height, screen_width, action_dim).to(device)
         # 网络优化器
-        # self.cnn_optimizer=torch.optim.Adam(self.cnn.parameters())
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),
                                                 lr=actor_lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
@@ -98,23 +90,18 @@ class ActorCritic:
         self.device = device
 
     def take_action(self, state):
-        state = torch.tensor([state], dtype=torch.float).to(self.device)
+        # state = torch.tensor([state], dtype=torch.float).to(self.device)
         probs = self.actor(state)
         action_dist = torch.distributions.Categorical(probs)
         action = action_dist.sample()
         return action.item()
 
     def update(self, transition_dict, i_episode, i):
-        states = torch.tensor(transition_dict['states'],
-                              dtype=torch.float).to(self.device)
-        actions = torch.tensor(transition_dict['actions']).view(-1, 1).to(
-            self.device)
-        rewards = torch.tensor(transition_dict['rewards'],
-                               dtype=torch.float).view(-1, 1).to(self.device)
-        next_states = torch.tensor(transition_dict['next_states'],
-                                   dtype=torch.float).to(self.device)
-        dones = torch.tensor(transition_dict['dones'],
-                             dtype=torch.float).view(-1, 1).to(self.device)
+        states = torch.cat(transition_dict['states'])
+        actions = torch.tensor(transition_dict['actions'], dtype=torch.int64).view(-1, 1).to(self.device)
+        rewards = torch.tensor(transition_dict['rewards'], dtype=torch.float).view(-1, 1).to(self.device)
+        next_states = torch.cat(transition_dict['next_states'])
+        dones = torch.tensor(transition_dict['dones'], dtype=torch.float).view(-1, 1).to(self.device)
 
         # 时序差分目标
         td_target = rewards + self.gamma * self.critic(next_states) * (1 - dones)
@@ -139,10 +126,7 @@ class ActorCritic:
             writer.add_scalar('A2C-CNN-ActorLoss', actor_loss,
                               episode)
             writer.add_scalar("A2C-CNN-CriticLoss", critic_loss, episode)
-            writer.add_scalar("A2C-CNN-ActorLearningRate", self.actor_optimizer.state_dict()['param_groups'][0]['lr'],
-                              episode)
-            writer.add_scalar("A2C-CNN-CriticLearningRate", self.actor_optimizer.state_dict()['param_groups'][0]['lr'],
-                              episode)
+
 
 
 # 输入提取
@@ -214,6 +198,7 @@ def train_on_policy_agent(env, agent, num_episodes):
             for i_episode in range(int(num_episodes / 10)):
                 episode_return = 0
                 transition_dict = {'states': [], 'actions': [], 'next_states': [], 'rewards': [], 'dones': []}
+                env.reset()
                 last_screen = get_screen()
                 current_screen = get_screen()
                 state = current_screen - last_screen
@@ -225,11 +210,7 @@ def train_on_policy_agent(env, agent, num_episodes):
                     # 观察新的状态
                     last_screen = current_screen
                     current_screen = get_screen()
-                    if not done:  # 如果没有结束
-                        # 两次屏幕截图的差别来训练网络
-                        next_state = current_screen - last_screen
-                    else:
-                        next_state = None  # 没有下一个状态，表示是死亡
+                    next_state = current_screen - last_screen
 
                     transition_dict['states'].append(state)
                     transition_dict['actions'].append(action)
@@ -243,14 +224,9 @@ def train_on_policy_agent(env, agent, num_episodes):
                 if (i_episode + 1) % 10 == 0:
                     pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
                                       'return': '%.3f' % np.mean(return_list[-10:])})
-                    writer.add_scalar('A2C-ten episodes average rewards', np.mean(return_list[-10:]),
+                    writer.add_scalar('ten episodes average rewards', np.mean(return_list[-10:]),
                                       (int)(num_episodes / 10 * i + i_episode + 1))
-                torch.save({
-                    'actor_net_state_dict': agent.actor.state_dict(),
-                    'critic_net_state_dict': agent.critic.state_dict(),
-                    'optimizer_actor_net_state_dict': agent.actor_optimizer.state_dict(),
-                    'optimizer_critic_net_state_dict': agent.critic_optimizer.state_dict()
-                }, PATH)
+
                 pbar.update(1)
     writer.close()
     return return_list
@@ -260,15 +236,6 @@ if __name__ == "__main__":
     env_name = 'CartPole-v1'
     env = gym.make(env_name).unwrapped
     env.seed(0)
-    # set up matplotlib
-    is_ipython = 'inline' in matplotlib.get_backend()
-    if is_ipython:
-        from IPython import display
-
-    # 显示模式转换为交互（interactive）模式
-    # matplotlib的显示模式默认为阻塞（block）模式（即：在plt.show()之后，程序会暂停到那儿，并不会继续执行下去
-    plt.ion()
-    plt.figure()
     torch.manual_seed(0)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
@@ -276,7 +243,7 @@ if __name__ == "__main__":
     init_screen = get_screen()
     _, _, screen_height, screen_width = init_screen.shape  # 得到画面的尺寸：宽高
 
-    agent = ActorCritic(state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
-                        gamma, device,screen_height,screen_width,state_dim)
+    agent = ActorCritic(screen_height, screen_width, action_dim, actor_lr, critic_lr,
+                        gamma, device)
 
     train_on_policy_agent(env, agent, num_episodes)

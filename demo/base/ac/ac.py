@@ -53,6 +53,9 @@ class ActorCritic:
                                                 lr=actor_lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),
                                                  lr=critic_lr)  # 价值网络优化器
+
+        writer.add_graph(self.actor)
+        writer.add_graph(self.critic)
         self.gamma = gamma
         self.device = device
 
@@ -131,6 +134,9 @@ if __name__ == "__main__":
     action_dim = env.action_space.n
     agent = ActorCritic(state_dim, hidden_dim, action_dim, actor_lr, critic_lr,
                         gamma, device)
+
+
+
 
     train_on_policy_agent(env, agent, num_episodes)
 

@@ -10,7 +10,7 @@ import rl_utils
 
 actor_lr = 5e-4
 critic_lr = 5e-3
-num_episodes = 200
+num_episodes = 2000
 hidden_dim = 64
 gamma = 0.98
 tau = 0.005  # 软更新参数
@@ -171,16 +171,3 @@ if __name__ == "__main__":
     return_list = rl_utils.train_off_policy_agent(env, agent, num_episodes,
                                                   replay_buffer, minimal_size,
                                                   batch_size)
-    episodes_list = list(range(len(return_list)))
-    plt.plot(episodes_list, return_list)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('DDPG on {}'.format(env_name))
-    plt.show()
-
-    mv_return = rl_utils.moving_average(return_list, 9)
-    plt.plot(episodes_list, mv_return)
-    plt.xlabel('Episodes')
-    plt.ylabel('Returns')
-    plt.title('DDPG on {}'.format(env_name))
-    plt.show()

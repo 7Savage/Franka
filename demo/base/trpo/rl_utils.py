@@ -3,7 +3,9 @@ import numpy as np
 import torch
 import collections
 import random
+from tensorboardX import SummaryWriter
 
+writer = SummaryWriter("../log2/trpo")
 
 class ReplayBuffer:
     def __init__(self, capacity):
@@ -54,6 +56,8 @@ def train_on_policy_agent(env, agent, num_episodes):
                 if (i_episode + 1) % 10 == 0:
                     pbar.set_postfix({'episode': '%d' % (num_episodes / 10 * i + i_episode + 1),
                                       'return': '%.3f' % np.mean(return_list[-10:])})
+                    writer.add_scalar('ten episodes average rewards', np.mean(return_list[-10:]),
+                                      (int)(num_episodes / 10 * i + i_episode + 1))
                 pbar.update(1)
     return return_list
 
