@@ -120,7 +120,7 @@ class PPOContinuous:
 
 
 if __name__ == "__main__":
-    env_name = 'MountainCarContinuous-v0'
+    env_name = 'Pendulum-v1'
     env = gym.make(env_name)
     env.seed(0)
     torch.manual_seed(0)

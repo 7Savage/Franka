@@ -5,10 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tensorboardX import SummaryWriter
 from tqdm import tqdm
+import gym
+import gym_panda
 
-import rl_utils
-
-writer = SummaryWriter("../log/ppo")
+writer = SummaryWriter("./log/ppo_panda")
 actor_lr = 1e-3
 critic_lr = 1e-2
 num_episodes = 1000
@@ -19,7 +19,15 @@ epochs = 10
 eps = 0.2
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
-
+def compute_advantage(gamma, lmbda, td_delta):
+    td_delta = td_delta.detach().numpy()
+    advantage_list = []
+    advantage = 0.0
+    for delta in td_delta[::-1]:
+        advantage = gamma * lmbda * advantage + delta
+        advantage_list.append(advantage)
+    advantage_list.reverse()
+    return torch.tensor(advantage_list, dtype=torch.float)
 
 class PolicyNet(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
@@ -83,7 +91,7 @@ class PPO:
         td_target = rewards + self.gamma * self.critic(next_states) * (1 -
                                                                        dones)
         td_delta = td_target - self.critic(states)
-        advantage = rl_utils.compute_advantage(self.gamma, self.lmbda,
+        advantage = compute_advantage(self.gamma, self.lmbda,
                                                td_delta.cpu()).to(self.device)
         old_log_probs = torch.log(self.actor(states).gather(1,
                                                             actions)).detach()
@@ -106,12 +114,11 @@ class PPO:
 
 
 if __name__ == "__main__":
-    env_name = 'CartPole-v1'
-    env = gym.make(env_name)
+    env = gym.make('panda-v0')
     env.seed(0)
     torch.manual_seed(0)
     state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.n
+    action_dim = env.action_space.shape[0]
     agent = PPO(state_dim, hidden_dim, action_dim, actor_lr, critic_lr, lmbda,
                 epochs, eps, gamma, device)
 
