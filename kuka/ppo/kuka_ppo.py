@@ -453,7 +453,7 @@ if __name__ == "__main__":
             if best_mean_reward is not None:
                 print("Best mean reward updated %.3f -> %.3f, model saved" % (best_mean_reward, mean_reward))
             best_mean_reward = mean_reward
-        if s >= 25 and mean_reward > 50:
+        if s >= 2500000 and mean_reward > 80:
             print('Environment solved in {:d} seasons!\tAverage Score: {:.2f}'.format(s + 1, mean_reward))
             break
 
