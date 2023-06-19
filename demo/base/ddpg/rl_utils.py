@@ -4,7 +4,7 @@ import torch
 import collections
 import random
 from tensorboardX import SummaryWriter
-writer = SummaryWriter("../log2/ddpg")
+writer = SummaryWriter("D:\PycharmProjects\Franka\experiment\Pendulum-v1\ddpg")
 
 
 class ReplayBuffer:

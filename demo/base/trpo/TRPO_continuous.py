@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import rl_utils
 import copy
 
-num_episodes = 2000
+num_episodes = 3000
 hidden_dim = 128
 gamma = 0.9
 lmbda = 0.9
@@ -198,7 +198,7 @@ class TRPOContinuous:
 
 
 if __name__ == "__main__":
-    env_name = 'Pendulum-v1'
+    env_name = 'MountainCarContinuous-v0'
     env = gym.make(env_name)
     env.seed(0)
     torch.manual_seed(0)

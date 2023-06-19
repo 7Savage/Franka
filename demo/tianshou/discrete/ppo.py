@@ -37,7 +37,7 @@ def get_args():
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
-    # ppo special
+    # PPO special
     parser.add_argument('--vf-coef', type=float, default=0.5)
     parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--eps-clip', type=float, default=0.2)
@@ -118,7 +118,7 @@ def test_ppo(args=get_args()):
     )
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, 'ppo')
+    log_path = os.path.join(args.logdir, args.task, 'PPO')
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer)
 

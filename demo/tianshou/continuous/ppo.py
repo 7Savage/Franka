@@ -38,7 +38,7 @@ def get_args():
     parser.add_argument(
         '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu'
     )
-    # ppo special
+    # PPO special
     parser.add_argument('--vf-coef', type=float, default=0.25)
     parser.add_argument('--ent-coef', type=float, default=0.0)
     parser.add_argument('--eps-clip', type=float, default=0.2)
@@ -61,7 +61,7 @@ def test_ppo(args=get_args()):
     args.action_shape = env.action_space.shape or env.action_space.n
     args.max_action = env.action_space.high[0]
     if args.reward_threshold is None:
-        default_reward_threshold = {"Pendulum-v0": -250, "Pendulum-v1": -250}
+        default_reward_threshold = {"Pendulum-v0": -200, "Pendulum-v1": -200}
         args.reward_threshold = default_reward_threshold.get(
             args.task, env.spec.reward_threshold
         )
@@ -125,7 +125,7 @@ def test_ppo(args=get_args()):
     )
     test_collector = Collector(policy, test_envs)
     # log
-    log_path = os.path.join(args.logdir, args.task, "ppo")
+    log_path = os.path.join(args.logdir, args.task, "PPO")
     writer = SummaryWriter(log_path)
     logger = TensorboardLogger(writer, save_interval=args.save_interval)
 

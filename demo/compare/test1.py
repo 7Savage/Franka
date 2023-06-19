@@ -10,7 +10,7 @@ sns.set_style('darkgrid')
 
 data = {0: pd.read_csv("DoubleDQN.csv", usecols=['Step', 'Value']),
         1: pd.read_csv("DuelingDQN.csv", usecols=['Step', 'Value']),
-        2: pd.read_csv("TRPO.csv", usecols=['Step', 'Value']), 3: pd.read_csv("PPO.csv", usecols=['Step', 'Value']),
+        2: pd.read_csv("TRPO.csv", usecols=['Step', 'Value']), 3: pd.read_csv("SCPPO.csv", usecols=['Step', 'Value']),
         4: pd.read_csv("DDPG.csv", usecols=['Step', 'Value']), 5: pd.read_csv("SAC.csv", usecols=['Step', 'Value'])}
 
 label = ['DoubleDQN', 'DuelingDQN', 'TRPO', 'PPO', "DDPG", "SAC"]

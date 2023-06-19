@@ -3,23 +3,23 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 import rl_utils
 
 actor_lr = 1e-4
 critic_lr = 5e-3
-num_episodes = 5000
+num_episodes = 3000
 hidden_dim = 128
-gamma = 0.9
-lmbda = 0.9
+gamma = 0.95
+lmbda = 0.95
 epochs = 10
 eps = 0.2
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
 
-writer = SummaryWriter("../log2/ppo_gradient_clip")
+writer = SummaryWriter("D:\PycharmProjects\Franka\experiment\Pendulum-v1\ddpg")
 
 class ValueNet(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim):
@@ -82,7 +82,7 @@ class PPOContinuous:
                                    dtype=torch.float).to(self.device)
         dones = torch.tensor(transition_dict['dones'],
                              dtype=torch.float).view(-1, 1).to(self.device)
-        rewards = (rewards + 8.0) / 8.0  # 和TRPO一样,对奖励进行修改,方便训练
+        #rewards = (rewards + 8.0) / 8.0  # 和TRPO一样,对奖励进行修改,方便训练
         td_target = rewards + self.gamma * self.critic(next_states) * (1 -
                                                                        dones)
         td_delta = td_target - self.critic(states)
@@ -115,17 +115,11 @@ class PPOContinuous:
             self.actor_optimizer.step()
             self.critic_optimizer.step()
 
-        if (i_episode + 1) % 10 == 0:
-            episode = (int)(num_episodes / 10 * i + i_episode + 1)
-            writer.add_scalar('ActorLearningRate',self.actor_optimizer.state_dict()['param_groups'][0]['lr'],
-                              episode)
-            writer.add_scalar("CriticLearningRate", self.critic_optimizer.state_dict()['param_groups'][0]['lr'], episode)
-
 
 
 
 if __name__ == "__main__":
-    env_name = 'MountainCarContinuous-v0'
+    env_name = 'Pendulum-v1'
     env = gym.make(env_name)
     env.seed(0)
     torch.manual_seed(0)

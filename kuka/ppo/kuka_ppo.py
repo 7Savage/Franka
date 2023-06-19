@@ -8,7 +8,6 @@ import numpy as np
 import random
 from PIL import Image
 from tensorboardX import SummaryWriter
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -307,10 +306,10 @@ def plot_screen(screen):
 
 
 if __name__ == "__main__":
-    env = KukaDiverseObjectEnv(renders=True, isDiscrete=False, removeHeightHack=False, maxSteps=20)
+    env = KukaDiverseObjectEnv(renders=False, isDiscrete=False, removeHeightHack=False, maxSteps=20)
     env.cid = p.connect(p.DIRECT)
     # if gpu is to be used
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     action_space = spaces.Box(low=-1, high=1, shape=(5, 1))
     writer = SummaryWriter()
     best_mean_reward = None
@@ -349,6 +348,8 @@ if __name__ == "__main__":
                          actor_hidden_layers=[64],
                          init_type='xavier-uniform',
                          seed=0).to(device)
+
+    print(policy)
 
     # we use the adam optimizer with learning rate 2e-4
     # optim.SGD is also possible

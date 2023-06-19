@@ -3,22 +3,24 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 import rl_utils
 
-writer = SummaryWriter("../log/ppo")
+writer = SummaryWriter("./log/DDPG")
 actor_lr = 1e-3
 critic_lr = 1e-2
-num_episodes = 1000
+num_episodes = 500
 hidden_dim = 128
-gamma = 0.98
-lmbda = 0.95
+gamma = 0.91
+lmbda = 0.9
 epochs = 10
 eps = 0.2
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device(
     "cpu")
+PATH = 'test/ddpg.pt'
+
 
 
 class PolicyNet(torch.nn.Module):
@@ -80,6 +82,7 @@ class PPO:
                                    dtype=torch.float).to(self.device)
         dones = torch.tensor(transition_dict['dones'],
                              dtype=torch.float).view(-1, 1).to(self.device)
+
         td_target = rewards + self.gamma * self.critic(next_states) * (1 -
                                                                        dones)
         td_delta = td_target - self.critic(states)
@@ -103,10 +106,16 @@ class PPO:
             critic_loss.backward()
             self.actor_optimizer.step()
             self.critic_optimizer.step()
+            if (i_episode + 1) % 10 == 0:
+                episode = (int)(num_episodes / 10 * i + i_episode + 1)
+                # writer.add_scalar('A2C-ActorLoss', actor_loss,
+                #                   episode)
+                # writer.add_scalar("A2C-CriticLoss", critic_loss, episode)
+
 
 
 if __name__ == "__main__":
-    env_name = 'CartPole-v1'
+    env_name = 'Acrobot-v1'
     env = gym.make(env_name)
     env.seed(0)
     torch.manual_seed(0)
@@ -140,5 +149,9 @@ if __name__ == "__main__":
                                       'return': '%.3f' % np.mean(return_list[-10:])})
                     writer.add_scalar('ten episodes average rewards', np.mean(return_list[-10:]),
                                       (int)(num_episodes / 10 * i + i_episode + 1))
+                    torch.save({
+                        'actor_net_state_dict': agent.actor.state_dict(),
+                        'critic_net_state_dict': agent.critic.state_dict(),
+                    }, PATH)
                 pbar.update(1)
     writer.close()
